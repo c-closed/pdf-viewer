@@ -1,0 +1,20 @@
+name: Deploy Worker
+
+# updates-worker 폴더가 바뀌면 자동 배포 (또는 수동 실행)
+on:
+  push:
+    branches: ["main"]
+    paths: ["updates-worker/**"]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: updates-worker
+          command: deploy

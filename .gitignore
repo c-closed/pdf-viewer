@@ -1,0 +1,31 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.log
+
+# PyInstaller
+build/
+dist/
+*.spec.bak
+
+# Installer output
+installer/*.exe
+
+# Cloudflare / Wrangler
+updates-worker/.wrangler/
+updates-worker/node_modules/
+.dev.vars
+.wrangler/
+
+# OS / editor
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+
+# 업데이트 테스트 산출물
+*.sha256
+latest.json
+tools/.wrangler/
