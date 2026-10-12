@@ -252,10 +252,11 @@ def _safe_remove(path: str) -> None:
 
 
 def launch_silent_update(installer: str, relaunch: str) -> bool:
-    """무음 설치를 실행하고, 끝나면 앱을 다시 시작한다(현재 앱은 곧 종료)."""
+    """무음 설치를 실행하고, 끝나면 설치 파일을 지운 뒤 앱을 다시 시작한다(현재 앱은 곧 종료)."""
     cmd = (
         'ping -n 2 127.0.0.1 > nul & '
         f'start "" /wait "{installer}" /VERYSILENT /NORESTART /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS '
+        f'& del /f /q "{installer}" '
         f'& start "" "{relaunch}"'
     )
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
