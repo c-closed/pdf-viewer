@@ -37,7 +37,7 @@ COLS_CHOICES = [1, 2, 3, 4, 5, 6]
 MAX_COLS = 12
 
 # 앱 버전(단일 소스). build.ps1이 이 값을 읽어 설치 파일 버전으로 전달한다.
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 # 자동 업데이트: GitHub Releases가 제공하는 최신 버전 manifest 주소
 UPDATE_MANIFEST_URL = "https://github.com/c-closed/pdf-viewer/releases/latest/download/latest.json"
