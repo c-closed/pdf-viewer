@@ -7,7 +7,7 @@
 - **상단 바**: 파일 열기 · 설정 · 검색(찾기/이전/다음·일치 수)
 - **하단 컨트롤 바**: 페이지 이동(이전·번호 입력·다음) · 확대/축소 · 폭 맞춤 / 쪽 맞춤 / 회전 · 보기 방식 / 보기 단위
 - 열어 놓은 파일명은 창 제목 표시줄에 표시
-- **무음 자동 업데이트**: 시작 시 Cloudflare Worker의 최신 버전 manifest를 확인해, 새 버전이 있으면 설치 파일을 받아(sha256 검증) 무음으로 설치 후 앱을 다시 시작 (설정에서 끌 수 있음)
+- **무음 자동 업데이트**: 시작 시 GitHub Releases의 최신 버전 manifest(`latest.json`)를 확인해, 새 버전이 있으면 설치 파일을 받아(sha256 검증) 무음으로 설치 후 앱을 다시 시작 (설정에서 끌 수 있음)
 - 버전은 `pdf_viewer.py`의 `__version__` 하나로 관리 (빌드·설치·업데이트 모두 이 값을 사용)
 - 보기 방식과 보기 단위를 **따로** 선택 (하단 바)
   - **보기 방식**: **n쪽씩** — 한 행에 가로로 몇 쪽을 배치할지. **숫자 입력칸(스핀박스)** 에 직접 입력 (1~12)
@@ -83,33 +83,31 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 빌드는 **onedir(폴더 형태)** 입니다. onefile과 달리 실행 시 임시폴더에 압축을 풀지 않아 **시작이 더 빠릅니다**.
 버전은 `pdf_viewer.py`의 `__version__`을 따르며 설치 파일 이름·버전 정보에 자동 반영됩니다.
 
-## 릴리스 / 자동 업데이트 (GitHub + Cloudflare)
-**구성**: 소스 = GitHub, 배포 = GitHub Releases + Cloudflare **R2**(설치 파일·manifest), 접점 = Cloudflare **Worker**(`latest.json` 제공).
+## 릴리스 / 자동 업데이트 (GitHub Releases)
+**구성**: 소스·배포 모두 GitHub. GitHub Actions가 설치 파일과 `latest.json`을 **Release 자산**으로 올리고,
+앱은 `releases/latest/download/latest.json`을 조회합니다. (Cloudflare 등 별도 서비스 불필요)
 
 ```
-앱 ── GET /latest.json ──▶ Cloudflare Worker ── R2: releases/PDFViewer-Setup-1.2.0.exe, latest.json
-     성공 시 새 버전이면 ── GET /download/... (sha256 검증) ──▶ 무음 설치 → 재시작
+앱 ── GET releases/latest/download/latest.json ──▶ GitHub Releases
+     새 버전이면 ── GET releases/download/<tag>/PDFViewer-Setup-1.2.0.exe (sha256 검증) ──▶ 무음 설치 → 재시작
 ```
 
-- **릴리스 절차**: `pdf_viewer.py`의 `__version__`을 올리고 태그를 푸시하면 GitHub Actions가 자동으로
-  빌드 → GitHub Release 등록 → R2 업로드 → `latest.json` 갱신까지 수행합니다.
+- **릴리스 절차**: `pdf_viewer.py`의 `__version__`을 올리고 그 버전으로 태그를 푸시하면 GitHub Actions가
+  자동으로 빌드 → GitHub Release 생성 → 설치 파일 + `latest.json` 업로드까지 수행합니다.
   ```powershell
-  git tag v1.2.0
-  git push origin v1.2.0
+  # __version__ 을 1.2.1 로 수정 후
+  git commit -am "v1.2.1"
+  git tag v1.2.1
+  git push origin main --tags
   ```
-  (로컬 수동 릴리스: `.\tools\publish.ps1`)
+  (로컬 수동 릴리스: `.\build.ps1` 후 `.\tools\publish.ps1`)
 
-- **1회 준비 (Cloudflare)**:
-  1. `npx wrangler login`
-  2. `npx wrangler r2 bucket create pdf-viewer`
-  3. `cd updates-worker; npx wrangler deploy`
-  4. 배포 후 표시되는 `https://pdf-viewer-updates.<계정>.workers.dev` 주소를:
-     - `pdf_viewer.py`의 `UPDATE_MANIFEST_URL`에 반영
-     - GitHub 저장소 변수 `WORKER_BASE_URL`로 등록
-  5. GitHub Actions secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
-     (권한: `Workers Scripts: Edit`, `Workers R2 Storage: Edit`)
-
+- GitHub Actions는 별도 시크릿 없이 기본 `GITHUB_TOKEN`만 사용합니다.
+- 저장소가 **Public**이어야 앱이 인증 없이 최신 버전을 조회할 수 있습니다.
 - **환경설정 → 자동 업데이트** 체크 해제로 끌 수 있습니다.
+
+> 참고: `latest.json`은 릴리스마다 자산으로 포함되어야 하며, 태그가 `v*` 형식이어야 합니다.
+> 배포용 설치 파일명은 `PDFViewer-Setup-<버전>.exe`로 고정됩니다.
 
 ## 아이콘
 폴더 안 `icon.ico` 하나로 다음에 자동 적용됩니다 — 앱 창(타이틀바), 실행 파일 `PDFViewer.exe`, 설치 마법사, 제거 프로그램, 시작 메뉴/바탕화면 바로가기.

@@ -1,6 +1,7 @@
 name: Release
 
-# 태그(v1.2.0) 푸시 시: 빌드 -> GitHub Release -> R2 업로드 -> latest.json 갱신
+# 태그(v1.2.0) 푸시 시: 빌드 -> GitHub Release 에 설치파일 + latest.json 자산 업로드
+#   앱은 https://github.com/<repo>/releases/latest/download/latest.json 을 조회한다.
 on:
   push:
     tags: ["v*"]
@@ -32,44 +33,35 @@ jobs:
         run: |
           $ver = (python -c "import pdf_viewer; print(pdf_viewer.__version__)").Trim()
           if (-not $ver) { Write-Error "__version__ 확인 실패"; exit 1 }
+          $tag = "${{ github.ref_name }}"
+          if ($tag -notmatch '^v') { $tag = "v$ver" }
           "VERSION=$ver" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "TAG=$tag"     | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           python -m PyInstaller --noconfirm --clean pdf_viewer.spec
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$ver" installer.iss
 
-      - name: Hash installer
+      - name: Build latest.json manifest
         shell: pwsh
         run: |
           $asset = "installer\PDFViewer-Setup-$env:VERSION.exe"
           if (-not (Test-Path $asset)) { Write-Error "설치 파일 없음: $asset"; exit 1 }
           $sha = (Get-FileHash $asset -Algorithm SHA256).Hash.ToLower()
-          "ASSET=$asset" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "SHA=$sha"     | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: installer/PDFViewer-Setup-${{ env.VERSION }}.exe
-          generate_release_notes: true
-
-      - name: Write latest.json manifest
-        shell: pwsh
-        run: |
-          $base = "${{ vars.WORKER_BASE_URL }}".Trim().TrimEnd('/')
-          if (-not $base) { Write-Error "저장소 변수 WORKER_BASE_URL 이 필요합니다."; exit 1 }
+          $base = "https://github.com/${{ github.repository }}/releases/download/$env:TAG"
           $json = [ordered]@{
             version  = $env:VERSION
-            url      = "$base/download/PDFViewer-Setup-$env:VERSION.exe"
-            sha256   = $env:SHA
-            size     = (Get-Item $env:ASSET).Length
+            url      = "$base/PDFViewer-Setup-$env:VERSION.exe"
+            sha256   = $sha
+            size     = (Get-Item $asset).Length
             pub_date = (Get-Date).ToUniversalTime().ToString("o")
           } | ConvertTo-Json -Compress
           Set-Content -Path latest.json -Value $json -Encoding utf8
+          Get-Content latest.json
 
-      - name: Upload to Cloudflare R2
-        shell: pwsh
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          npx --yes wrangler@latest r2 object put "pdf-viewer/releases/PDFViewer-Setup-$env:VERSION.exe" --file "$env:ASSET" --remote
-          npx --yes wrangler@latest r2 object put "pdf-viewer/latest.json" --file latest.json --remote
+      - name: Create GitHub Release (installer + latest.json)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          files: |
+            installer/PDFViewer-Setup-${{ env.VERSION }}.exe
+            latest.json
+          generate_release_notes: true

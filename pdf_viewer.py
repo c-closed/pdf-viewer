@@ -39,8 +39,8 @@ MAX_COLS = 12
 # 앱 버전(단일 소스). build.ps1이 이 값을 읽어 설치 파일 버전으로 전달한다.
 __version__ = "1.2.0"
 
-# 자동 업데이트: Cloudflare Worker가 제공하는 최신 버전 manifest 주소
-UPDATE_MANIFEST_URL = "https://pdf-viewer-updates.workers.dev/latest.json"
+# 자동 업데이트: GitHub Releases가 제공하는 최신 버전 manifest 주소
+UPDATE_MANIFEST_URL = "https://github.com/c-closed/pdf-viewer/releases/latest/download/latest.json"
 
 
 def _cols_label(n: int) -> str:
@@ -201,7 +201,7 @@ def _version_tuple(v) -> tuple:
 
 
 def fetch_update_info() -> dict | None:
-    """Cloudflare Worker의 manifest를 조회한다."""
+    """GitHub Releases의 최신 manifest(latest.json)를 조회한다."""
     import urllib.request
 
     req = urllib.request.Request(
